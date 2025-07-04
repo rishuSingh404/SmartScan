@@ -19,7 +19,7 @@ A modern, production-ready web application for parsing, scoring, and shortlistin
 
 ## 🏗️ Architecture
 
-![Architecture Diagram](screenshots/eraser-architecture.png)
+![Architecture Diagram](architecture.png)
 
 - **Frontend UI:** Dashboard, upload form, job description form, results display, navigation bar
 - **Backend:** Flask app with route handlers, authentication, resume processing pipeline
