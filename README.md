@@ -29,15 +29,6 @@ A modern, production-ready web application for parsing, scoring, and shortlistin
 
 ---
 
-## 🖼️ Demo Screenshots
-
-### Home / Dashboard
-![Home Screenshot](screenshots/home.png)
-
-### Results Display
-![Results Screenshot](screenshots/outputsheet.png)
-
----
 
 ## ⚙️ Setup & Deployment
 
@@ -125,18 +116,8 @@ A modern, production-ready web application for parsing, scoring, and shortlistin
 
 ---
 
-## 🙏 Credits
 
-- Rishu Kumar Singh
-- Open-source libraries and contributors
 
----
-
-## 📄 License
-
-MIT License
-
----
 
 ## 📈 Resume Points (XYZ Format)
 
