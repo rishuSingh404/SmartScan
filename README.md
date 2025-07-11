@@ -118,8 +118,3 @@ python deploy_streamlit.py
 
 
 
-## 📈 Resume Points (XYZ Format)
-
-1. Developed and deployed a **Streamlit-based resume parsing application** using advanced NLP and ML techniques, enabling automated candidate shortlisting and reducing manual screening time by **over 80%** for HR teams.
-2. Engineered a **zero-authentication, user-friendly interface** that simplifies the resume evaluation process, making it accessible to non-technical users while maintaining professional-grade analysis capabilities.
-3. Optimized the resume scoring pipeline with **advanced feature extraction and ML-based similarity scoring**, achieving **35% higher accuracy** in candidate-job matching compared to traditional keyword-based approaches.
