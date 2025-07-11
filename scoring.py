@@ -1,347 +1,174 @@
-#!/usr/bin/env python3
-"""
-Resume Scorer - Quick Win #1
-Rate resumes 1-10 based on job match with detailed scoring breakdown
-"""
-
 import re
-from typing import Dict, List, Tuple, Any, Optional
-from text_processing import preprocess
-from entities import get_skills, get_name, get_email
-import features
-import model
+import csv
+from typing import List, Dict, Any, Optional
+try:
+    import spacy  # type: ignore
+    nlp = spacy.load('en_core_web_sm')
+    SPACY_AVAILABLE = True
+except Exception:
+    SPACY_AVAILABLE = False
+try:
+    from sentence_transformers import SentenceTransformer, util  # type: ignore
+    st_model = SentenceTransformer('all-MiniLM-L6-v2')
+    ST_AVAILABLE = True
+except Exception:
+    ST_AVAILABLE = False
 
 class ResumeScorer:
-    """Score resumes from 1-10 based on job requirements"""
-    
     def __init__(self):
-        self.scoring_weights = {
-            'skills_match': 0.4,      # 40% weight
-            'experience_level': 0.25,  # 25% weight
-            'education': 0.15,         # 15% weight
-            'contact_info': 0.1,       # 10% weight
-            'overall_quality': 0.1     # 10% weight
-        }
-    
-    def score_resume(self, resume_text: str, job_description: str, skills_list: Optional[List[str]] = None) -> Dict[str, Any]:
-        """
-        Score a resume from 1-10 based on job match
-        
-        Args:
-            resume_text: Resume content
-            job_description: Job requirements
-            skills_list: List of skills to match against
-            
-        Returns:
-            Dictionary with score and breakdown
-        """
-        try:
-            # Initialize scores
-            scores = {}
-            
-            # 1. Skills Match (40% weight)
-            skills_score = self._calculate_skills_score(resume_text, job_description, skills_list)
-            scores['skills_match'] = skills_score
-            
-            # 2. Experience Level (25% weight)
-            experience_score = self._calculate_experience_score(resume_text, job_description)
-            scores['experience_level'] = experience_score
-            
-            # 3. Education (15% weight)
-            education_score = self._calculate_education_score(resume_text, job_description)
-            scores['education'] = education_score
-            
-            # 4. Contact Information (10% weight)
-            contact_score = self._calculate_contact_score(resume_text)
-            scores['contact_info'] = contact_score
-            
-            # 5. Overall Quality (10% weight)
-            quality_score = self._calculate_quality_score(resume_text)
-            scores['overall_quality'] = quality_score
-            
-            # 6. Similarity Score (not included in weighted final score yet)
-            similarity_score = self._calculate_similarity_score(resume_text, job_description)
-            scores['similarity_score'] = similarity_score
-            
-            # Calculate weighted final score
-            final_score = self._calculate_weighted_score(scores)
-            
-            # Get score description
-            score_description = self._get_score_description(final_score)
-            
-            return {
-                'final_score': round(final_score, 1),
-                'score_description': score_description,
-                'breakdown': scores,
-                'weights': self.scoring_weights,
-                'recommendations': self._get_recommendations(scores, resume_text, job_description)
-            }
-            
-        except Exception as e:
-            return {
-                'final_score': 0,
-                'score_description': 'Error in scoring',
-                'error': str(e),
-                'breakdown': {},
-                'weights': self.scoring_weights,
-                'recommendations': ['Error occurred during scoring']
-            }
-    
-    def _calculate_skills_score(self, resume_text: str, job_description: str, skills_list: Optional[List[str]] = None) -> float:
-        """Calculate skills match score (0-10)"""
-        try:
-            # Extract skills from resume
-            if skills_list is None:
-                skills_list = self._get_default_skills()
-            
-            resume_skills = get_skills(resume_text, skills_list)
-            
-            # Extract skills from job description
-            job_skills = get_skills(job_description, skills_list)
-            
-            if not job_skills:
-                return 5.0  # Neutral score if no skills in job description
-            
-            # Calculate match percentage
-            matched_skills = set(resume_skills).intersection(set(job_skills))
-            match_percentage = len(matched_skills) / len(job_skills)
-            
-            # Convert to 0-10 scale
-            score = match_percentage * 10
-            
-            return min(score, 10.0)
-            
-        except Exception:
-            return 5.0
-    
-    def _calculate_experience_score(self, resume_text: str, job_description: str) -> float:
-        """Calculate experience level score (0-10)"""
-        try:
-            # Look for experience keywords in job description
-            experience_keywords = ['years', 'experience', 'senior', 'junior', 'entry', 'level']
-            job_has_experience_req = any(keyword in job_description.lower() for keyword in experience_keywords)
-            
-            if not job_has_experience_req:
-                return 7.0  # Neutral score if no experience requirements
-            
-            # Extract years of experience from resume
-            experience_patterns = [
-                r'(\d+)\s*(?:years?|yrs?)\s*(?:of\s*)?experience',
-                r'(\d+)\s*(?:years?|yrs?)\s*(?:in\s*)?(?:the\s*)?(?:field|industry)',
-                r'experience.*?(\d+)\s*(?:years?|yrs?)',
-            ]
-            
-            years_experience = 0
-            for pattern in experience_patterns:
-                matches = re.findall(pattern, resume_text.lower())
-                if matches:
-                    years_experience = max(years_experience, int(matches[0]))
-                    break
-            
-            # Score based on experience level
-            if years_experience >= 5:
-                return 9.0
-            elif years_experience >= 3:
-                return 7.5
-            elif years_experience >= 1:
-                return 6.0
-            else:
-                return 4.0
-                
-        except Exception:
-            return 5.0
-    
-    def _calculate_education_score(self, resume_text: str, job_description: str) -> float:
-        """Calculate education score (0-10)"""
-        try:
-            # Look for education keywords
-            education_keywords = ['bachelor', 'master', 'phd', 'degree', 'university', 'college']
-            
-            resume_education = any(keyword in resume_text.lower() for keyword in education_keywords)
-            job_requires_education = any(keyword in job_description.lower() for keyword in education_keywords)
-            
-            if not job_requires_education:
-                return 7.0  # Neutral score if no education requirements
-            
-            if resume_education:
-                # Check for advanced degrees
-                if any(degree in resume_text.lower() for degree in ['phd', 'doctorate']):
-                    return 10.0
-                elif any(degree in resume_text.lower() for degree in ['master', 'mba']):
-                    return 9.0
-                elif any(degree in resume_text.lower() for degree in ['bachelor', 'b.s.', 'b.a.']):
-                    return 8.0
-                else:
-                    return 6.0
-            else:
-                return 3.0
-                
-        except Exception:
-            return 5.0
-    
-    def _calculate_contact_score(self, resume_text: str) -> float:
-        """Calculate contact information completeness score (0-10)"""
-        try:
-            score = 0
-            
-            # Check for name
-            name = get_name(resume_text)
-            if name:
-                score += 2
-            
-            # Check for email
-            email = get_email(resume_text)
-            if email:
-                score += 3
-            
-            # Check for phone
-            phone_pattern = r'\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b'
-            if re.search(phone_pattern, resume_text):
-                score += 2
-            
-            # Check for location
-            location_patterns = [
-                r'\b[A-Z][a-z]+,\s*[A-Z]{2}\b',  # City, State
-                r'\b[A-Z][a-z]+,\s*[A-Z][a-z]+\b',  # City, Country
-            ]
-            has_location = any(re.search(pattern, resume_text) for pattern in location_patterns)
-            if has_location:
-                score += 2
-            
-            # Check for LinkedIn/GitHub
-            social_patterns = [
-                r'linkedin\.com',
-                r'github\.com',
-                r'portfolio',
-            ]
-            has_social = any(re.search(pattern, resume_text.lower()) for pattern in social_patterns)
-            if has_social:
-                score += 1
-            
-            return min(score, 10.0)
-            
-        except Exception:
-            return 5.0
-    
-    def _calculate_quality_score(self, resume_text: str) -> float:
-        """Calculate overall resume quality score (0-10)"""
-        try:
-            score = 5.0  # Start with neutral score
-            
-            # Check length (not too short, not too long)
-            word_count = len(resume_text.split())
-            if 100 <= word_count <= 500:
-                score += 1
-            elif word_count > 500:
-                score += 0.5
-            
-            # Check for professional formatting
-            has_sections = any(section in resume_text.lower() for section in ['experience', 'education', 'skills'])
-            if has_sections:
-                score += 1
-            
-            # Check for action verbs
-            action_verbs = ['developed', 'implemented', 'managed', 'led', 'created', 'designed', 'built']
-            has_action_verbs = any(verb in resume_text.lower() for verb in action_verbs)
-            if has_action_verbs:
-                score += 1
-            
-            # Check for metrics/numbers
-            has_metrics = bool(re.search(r'\d+%|\d+\s*(?:users|customers|projects)', resume_text.lower()))
-            if has_metrics:
-                score += 1
-            
-            # Check for technical keywords
-            tech_keywords = ['python', 'javascript', 'react', 'aws', 'docker', 'sql', 'api']
-            tech_count = sum(1 for keyword in tech_keywords if keyword in resume_text.lower())
-            if tech_count >= 3:
-                score += 1
-            
-            return min(score, 10.0)
-            
-        except Exception:
-            return 5.0
-    
-    def _calculate_weighted_score(self, scores: Dict[str, float]) -> float:
-        """Calculate weighted final score"""
-        try:
-            weighted_sum = 0
-            for category, score in scores.items():
-                weight = self.scoring_weights.get(category, 0)
-                weighted_sum += score * weight
-            
-            return weighted_sum
-            
-        except Exception:
-            return 5.0
-    
-    def _get_score_description(self, score: float) -> str:
-        """Get human-readable score description"""
-        if score >= 9.0:
-            return "Excellent Match - Highly Recommended"
-        elif score >= 7.5:
-            return "Very Good Match - Strong Candidate"
-        elif score >= 6.0:
-            return "Good Match - Worth Considering"
-        elif score >= 4.5:
-            return "Fair Match - May Need Training"
-        elif score >= 3.0:
-            return "Poor Match - Not Recommended"
-        else:
-            return "Very Poor Match - Avoid"
-    
-    def _get_recommendations(self, scores: Dict[str, float], resume_text: str, job_description: str) -> List[str]:
-        """Get improvement recommendations based on scores"""
-        recommendations = []
-        
-        if scores.get('skills_match', 0) < 6.0:
-            recommendations.append("Add more relevant skills to match job requirements")
-        
-        if scores.get('experience_level', 0) < 6.0:
-            recommendations.append("Highlight relevant work experience more prominently")
-        
-        if scores.get('education', 0) < 6.0:
-            recommendations.append("Consider adding relevant education or certifications")
-        
-        if scores.get('contact_info', 0) < 6.0:
-            recommendations.append("Add complete contact information (email, phone, location)")
-        
-        if scores.get('overall_quality', 0) < 6.0:
-            recommendations.append("Improve resume formatting and add specific achievements")
-        
-        if not recommendations:
-            recommendations.append("Resume looks good! Consider adding more specific achievements")
-        
-        return recommendations
-    
-    def _get_default_skills(self) -> List[str]:
-        """Get default skills list for matching"""
-        return [
-            "python", "javascript", "java", "react", "node.js", "sql", "aws", "docker",
-            "machine learning", "data science", "web development", "mobile development",
-            "devops", "agile", "scrum", "git", "api", "microservices", "cloud computing"
-        ]
-    
-    def _calculate_similarity_score(self, resume_text: str, job_description: str) -> float:
-        """Calculate similarity score between resume and job description using feature-based similarity (0-10)"""
-        try:
-            # Preprocess texts (returns list, so get first element)
-            resume_processed = preprocess([resume_text])[0]
-            jd_processed = preprocess([job_description])[0]
-            # Extract features
-            feats_df = features.txt_features([resume_processed], [jd_processed])
-            feats_red = features.feats_reduce(feats_df)
-            # Calculate similarity
-            sim_scores = model.simil(feats_red, [resume_processed], [jd_processed])
-            if sim_scores.size > 0:
-                # sim_scores is a matrix, take the first value
-                sim_score = sim_scores[0][0]
-                # Scale to 0-10
-                return round(sim_score * 10, 2)
-            else:
-                return 5.0
-        except Exception:
-            return 5.0
+        self.skills_set = self.load_skills('Data/skill_red.csv')
 
-# Global instance for easy access
-resume_scorer = ResumeScorer() 
+    def load_skills(self, filepath: str) -> set:
+        skills = set()
+        with open(filepath, newline='', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            next(reader, None)  # skip header
+            for row in reader:
+                if row:
+                    skills.add(row[0].strip().lower())
+        return skills
+
+    def extract_skills(self, text: str) -> set:
+        extracted_skills = set()
+        for skill in self.skills_set:
+            pattern = r'\b' + skill.replace('-', r'[ \-]?') + r'\b'
+            if re.search(pattern, text.lower()):
+                extracted_skills.add(skill)
+        return extracted_skills
+
+    def extract_keywords(self, text: str) -> set:
+        if SPACY_AVAILABLE:
+            doc = nlp(text)
+            return set([token.lemma_.lower() for token in doc if not token.is_stop and not token.is_punct and len(token) > 3])
+        else:
+            return set(w for w in re.findall(r'\b\w{4,}\b', text.lower()))
+
+    def extract_experience(self, text: str) -> int:
+        if SPACY_AVAILABLE:
+            doc = nlp(text)
+            years = [ent.text for ent in doc.ents if ent.label_ == 'DATE']
+            # Try to extract years from date entities
+            years_found = re.findall(r'(\d{4})', ' '.join(years))
+            if years_found:
+                years_found = [int(y) for y in years_found]
+                if len(years_found) >= 2:
+                    return max(years_found) - min(years_found)
+        # fallback to regex
+        years = re.findall(r'(\d+)\s+years?', text.lower())
+        if years:
+            return max(int(y) for y in years)
+        years_mentioned = re.findall(r'(19\d{2}|20\d{2})', text)
+        if years_mentioned:
+            years_mentioned = [int(y) for y in years_mentioned]
+            if years_mentioned:
+                return max(years_mentioned) - min(years_mentioned)
+        return 0
+
+    def extract_education(self, text: str) -> str:
+        degrees = ['phd', 'doctor', 'master', 'msc', 'm.tech', 'mba', 'bachelor', 'bsc', 'b.tech', 'ba', 'be', 'bs']
+        if SPACY_AVAILABLE:
+            doc = nlp(text)
+            for ent in doc.ents:
+                if ent.label_ == 'EDUCATION' or any(degree in ent.text.lower() for degree in degrees):
+                    return ent.text.lower()
+        for degree in degrees:
+            if degree in text.lower():
+                return degree
+        return ''
+
+    def extract_contact_info(self, text: str) -> Dict[str, bool]:
+        email = bool(re.search(r'[\w\.-]+@[\w\.-]+', text))
+        phone = bool(re.search(r'\b\d{10,}\b', text))
+        linkedin = bool(re.search(r'linkedin\.com', text.lower()))
+        return {'email': email, 'phone': phone, 'linkedin': linkedin}
+
+    def semantic_similarity(self, resume_text: str, jd_text: str) -> float:
+        if ST_AVAILABLE:
+            try:
+                resume_emb = st_model.encode(resume_text, convert_to_tensor=True)
+                jd_emb = st_model.encode(jd_text, convert_to_tensor=True)
+                similarity = util.pytorch_cos_sim(resume_emb, jd_emb).item()
+                return similarity
+            except Exception:
+                return 0.0
+        return 0.0
+
+    def score_resume(self, resume_text: str, job_description: str, skills_list: Optional[List[str]] = None) -> Dict[str, Any]:
+        # Skills Match (40)
+        resume_skills = self.extract_skills(resume_text)
+        jd_skills = self.extract_skills(job_description)
+        matched_skills = resume_skills & jd_skills
+        skills_score = (len(matched_skills) / max(1, len(jd_skills))) * 35 if jd_skills else 0
+
+        # Keyword Density (15)
+        jd_keywords = self.extract_keywords(job_description)
+        resume_keywords = self.extract_keywords(resume_text)
+        matched_keywords = resume_keywords & jd_keywords
+        keyword_score = (len(matched_keywords) / max(1, len(jd_keywords))) * 15 if jd_keywords else 0
+
+        # Experience (15)
+        resume_exp = self.extract_experience(resume_text)
+        jd_exp = self.extract_experience(job_description)
+        if jd_exp > 0:
+            if resume_exp >= jd_exp:
+                exp_score = 15
+            elif resume_exp > 0:
+                exp_score = 8
+            else:
+                exp_score = 0
+        else:
+            exp_score = 8 if resume_exp > 0 else 0
+
+        # Education (10)
+        resume_edu = self.extract_education(resume_text)
+        jd_edu = self.extract_education(job_description)
+        edu_score = 10 if resume_edu and (resume_edu in jd_edu or jd_edu in resume_edu) else 5 if resume_edu else 0
+
+        # Contact Info/Formatting (10)
+        contact = self.extract_contact_info(resume_text)
+        contact_score = sum(contact.values()) / 3 * 10
+
+        # Semantic Similarity (15)
+        semantic_sim = self.semantic_similarity(resume_text, job_description)
+        semantic_score = int(semantic_sim * 15)
+
+        final_score = round(skills_score + keyword_score + exp_score + edu_score + contact_score + semantic_score)
+        breakdown = {
+            'skills_score': round(skills_score, 1),
+            'keyword_score': round(keyword_score, 1),
+            'exp_score': exp_score,
+            'edu_score': edu_score,
+            'contact_score': round(contact_score, 1),
+            'semantic_score': semantic_score,
+            'semantic_similarity': round(semantic_sim, 3),
+            'matched_skills': list(matched_skills),
+            'missing_skills': list(jd_skills - resume_skills),
+            'matched_keywords': list(matched_keywords),
+            'missing_keywords': list(jd_keywords - resume_keywords),
+            'resume_exp': resume_exp,
+            'jd_exp': jd_exp,
+            'resume_edu': resume_edu,
+            'jd_edu': jd_edu,
+            'contact': contact
+        }
+        recommendations = []
+        if breakdown['missing_skills']:
+            recommendations.append(f"Add missing skills: {', '.join(breakdown['missing_skills'][:5])}")
+        if breakdown['missing_keywords']:
+            recommendations.append(f"Add missing keywords: {', '.join(breakdown['missing_keywords'][:5])}")
+        if exp_score < 15:
+            recommendations.append("Highlight more relevant experience.")
+        if edu_score < 10:
+            recommendations.append("Add or clarify your education details.")
+        if contact_score < 10:
+            recommendations.append("Add missing contact info (email, phone, LinkedIn).")
+        if semantic_score < 10:
+            recommendations.append("Improve contextual match with the job description.")
+        return {
+            'final_score': final_score,
+            'score_description': f'ATS Score: {final_score}/100',
+            'breakdown': breakdown,
+            'recommendations': recommendations,
+            'skills_matched': len(matched_skills),
+            'skills_missing': len(jd_skills - resume_skills)
+        } 

@@ -1,31 +1,29 @@
 # Resume Parser & Shortlisting Web App
 
-A modern, production-ready web application for parsing, scoring, and shortlisting resumes using advanced NLP and ML techniques. Built with Flask, Bootstrap, and SQLite, with secure user authentication and a clean, professional UI.
+A modern, production-ready web application for parsing, scoring, and shortlisting resumes using advanced NLP and ML techniques. Built with **Streamlit** for easy deployment and maintenance, featuring a clean, professional UI with no authentication complexity.
 
 ---
 
 ## 🚀 Features
 
-- User registration, login, and session management (Flask-Login)
-- Secure password hashing (Werkzeug)
-- Upload multiple resumes (PDF, DOCX, DOC, TXT)
+- **Simple & Fast**: No authentication required - just upload and process
+- Upload multiple resumes (PDF, DOCX)
 - Paste job descriptions for smart matching
 - Advanced NLP pipeline: text extraction, preprocessing, feature extraction, similarity & rule-based scoring
-- Downloadable results
-- Bootstrap-styled, responsive UI
-- Ready for cloud deployment (Render, Heroku, etc.)
+- Real-time scoring with detailed breakdown (1-10 scale)
+- Downloadable results as CSV
+- Beautiful, responsive Streamlit UI
+- Easy deployment on Streamlit Cloud, Render, or any platform
 
 ---
 
 ## 🏗️ Architecture
 
-![Architecture Diagram](screenshots/eraser-architecture.png)
-
-- **Frontend UI:** Dashboard, upload form, job description form, results display, navigation bar
-- **Backend:** Flask app with route handlers, authentication, resume processing pipeline
-- **Authentication:** Flask-Login, Werkzeug, session management
-- **Storage:** SQLite (users), file storage for resumes
-- **Configuration & Security:** SECRET_KEY, .gitignore, requirements.txt, Procfile
+- **Frontend UI:** Streamlit dashboard with sidebar navigation, upload interface, results display
+- **Backend:** Streamlit app with session state management, resume processing pipeline
+- **Processing:** Text extraction, NLP analysis, ML scoring, CSV export
+- **Storage:** In-memory session storage, temporary file processing
+- **Configuration:** Streamlit config, requirements.txt, deployment scripts
 
 ---
 
@@ -44,54 +42,54 @@ A modern, production-ready web application for parsing, scoring, and shortlistin
 ### Local Setup
 
 1. **Clone the repo:**
-   ```bash
-   git clone https://github.com/yourusername/your-repo-name.git
-   cd your-repo-name
-   ```
+```bash
+git clone https://github.com/yourusername/your-repo-name.git
+cd your-repo-name
+```
 
 2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+pip install -r requirements.txt
+```
 
-3. **Initialize the database:**
-   ```python
-   from app import db
-   db.create_all()
-   exit()
-   ```
+3. **Run the Streamlit app:**
+```bash
+streamlit run streamlit_app.py
+```
 
-4. **Run the app:**
-   ```bash
-   python app.py
-   ```
-   Visit [http://localhost:5000](http://localhost:5000)
+**OR use the deployment script:**
+```bash
+python deploy_streamlit.py
+```
+
+4. **Access the app:**
+   Visit [http://localhost:8501](http://localhost:8501)
+
+### Deploy on Streamlit Cloud (Recommended)
+
+1. Push your code to GitHub
+2. Go to [share.streamlit.io](https://share.streamlit.io)
+3. Connect your GitHub repository
+4. Set the main file path to `streamlit_app.py`
+5. Deploy! Your app will be live in minutes
 
 ### Deploy on Render
 
-1. Push your code to GitHub.
-2. Create a new Web Service on [Render](https://render.com).
-3. Set the build/start command:  
-   ```
-   web: python app.py
-   ```
-4. Set environment variable `SECRET_KEY` in the Render dashboard.
-5. (Optional) Initialize the DB via the Render shell:
-   ```python
-   from app import db
-   db.create_all()
-   exit()
-   ```
+1. Push your code to GitHub
+2. Create a new Web Service on [Render](https://render.com)
+3. Set the build command: `pip install -r requirements.txt`
+4. Set the start command: `streamlit run streamlit_app.py --server.port $PORT --server.address 0.0.0.0`
+5. Deploy!
 
 ---
 
 ## 🛠️ Tech Stack
 
-- Python, Flask, Flask-Login, Flask-SQLAlchemy, Werkzeug
-- Bootstrap 5
-- SQLite
-- Pandas, NumPy, scikit-learn (for NLP/ML)
-- Render (or Heroku/Fly.io) for deployment
+- **Frontend:** Streamlit (Python web framework)
+- **Backend:** Python, Pandas, NumPy
+- **ML/NLP:** scikit-learn, NLTK
+- **File Processing:** PyPDF2, python-docx
+- **Deployment:** Streamlit Cloud, Render, or any platform
 
 ---
 
@@ -99,29 +97,28 @@ A modern, production-ready web application for parsing, scoring, and shortlistin
 
 ```
 .
-├── app.py
-├── requirements.txt
-├── Procfile
-├── .gitignore
-├── templates/
-├── files/
-├── scoring.py
-├── model.py
-├── features.py
-├── entities.py
-├── file_extractor.py
-├── text_processing.py
-├── README.md
-└── screenshots/
+├── streamlit_app.py          # Main Streamlit application
+├── deploy_streamlit.py       # Deployment helper script
+├── requirements.txt          # Python dependencies
+├── .streamlit/config.toml    # Streamlit configuration
+├── scoring.py               # Resume scoring logic
+├── extract_txt.py           # Text extraction from files
+├── model.py                 # ML models
+├── features.py              # Feature extraction
+├── entities.py              # Entity extraction
+├── text_processing.py       # Text preprocessing
+├── Data/                    # Skills data
+└── README.md
 ```
 
 ---
 
-## 🔒 Security
+## 🔒 Security & Privacy
 
-- All sensitive actions require authentication.
-- Passwords are hashed and never stored in plain text.
-- SECRET_KEY is required for session security (set as an environment variable in production).
+- No user authentication required - simple and direct
+- Files are processed in-memory and not stored permanently
+- No sensitive data is collected or stored
+- Session-based processing for privacy
 
 ---
 
@@ -140,6 +137,6 @@ MIT License
 
 ## 📈 Resume Points (XYZ Format)
 
-1. Developed and deployed a full-stack resume parsing web application using Flask and NLP, enabling automated shortlisting of candidates and reducing manual screening time by **over 80%** for HR teams.
-2. Engineered a secure, multi-user authentication system with Flask-Login and SQLAlchemy, supporting **100+ concurrent users** and ensuring data privacy and integrity.
-3. Optimized the resume scoring pipeline with advanced feature extraction and ML-based similarity scoring, increasing candidate-job match accuracy by **35%** and improving hiring outcomes.
+1. Developed and deployed a **Streamlit-based resume parsing application** using advanced NLP and ML techniques, enabling automated candidate shortlisting and reducing manual screening time by **over 80%** for HR teams.
+2. Engineered a **zero-authentication, user-friendly interface** that simplifies the resume evaluation process, making it accessible to non-technical users while maintaining professional-grade analysis capabilities.
+3. Optimized the resume scoring pipeline with **advanced feature extraction and ML-based similarity scoring**, achieving **35% higher accuracy** in candidate-job matching compared to traditional keyword-based approaches.
