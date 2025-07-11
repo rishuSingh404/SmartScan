@@ -19,23 +19,16 @@ A modern, production-ready web application for parsing, scoring, and shortlistin
 
 ## 🏗️ Architecture
 
-- **Frontend UI:** Streamlit dashboard with sidebar navigation, upload interface, results display
-- **Backend:** Streamlit app with session state management, resume processing pipeline
-- **Processing:** Text extraction, NLP analysis, ML scoring, CSV export
-- **Storage:** In-memory session storage, temporary file processing
-- **Configuration:** Streamlit config, requirements.txt, deployment scripts
+![Architecture Diagram](architecture.png)
+
+- **Frontend UI:** Dashboard, upload form, job description form, results display, navigation bar
+- **Backend:** Flask app with route handlers, authentication, resume processing pipeline
+- **Authentication:** Flask-Login, Werkzeug, session management
+- **Storage:** SQLite (users), file storage for resumes
+- **Configuration & Security:** SECRET_KEY, .gitignore, requirements.txt, Procfile
 
 ---
 
-## 🖼️ Demo Screenshots
-
-### Home / Dashboard
-![Home Screenshot](screenshots/home.png)
-
-### Results Display
-![Results Screenshot](screenshots/outputsheet.png)
-
----
 
 ## ⚙️ Setup & Deployment
 
@@ -122,18 +115,8 @@ python deploy_streamlit.py
 
 ---
 
-## 🙏 Credits
 
-- Rishu Kumar Singh
-- Open-source libraries and contributors
 
----
-
-## 📄 License
-
-MIT License
-
----
 
 ## 📈 Resume Points (XYZ Format)
 
